@@ -95,6 +95,9 @@ class GraphST():
         
         if 'highly_variable' not in adata.var.keys():
            preprocess(self.adata)
+        #    print('1')
+        # else:
+        #    print('2')
         
         if 'adj' not in adata.obsm.keys():
            if self.datatype in ['Stereo', 'Slide']:
@@ -162,6 +165,7 @@ class GraphST():
                                           weight_decay=self.weight_decay)
         
         print('Begin to train ST data...')
+        print('Debugging')
         self.model.train()
         
         for epoch in tqdm(range(self.epochs)): 
