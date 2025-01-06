@@ -101,7 +101,7 @@ def preprocess(adata):
     sc.pp.normalize_total(adata, target_sum=1e4)
     sc.pp.log1p(adata)
     sc.pp.scale(adata, zero_center=False, max_value=10)
-    print(adata)
+    # print(adata)
     
 def get_feature(adata, deconvolution=False):
     if deconvolution:

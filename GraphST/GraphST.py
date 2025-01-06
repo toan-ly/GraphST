@@ -165,7 +165,7 @@ class GraphST():
                                           weight_decay=self.weight_decay)
         
         print('Begin to train ST data...')
-        print('Debugging')
+        # print('Debugging')
         self.model.train()
         
         for epoch in tqdm(range(self.epochs)): 
