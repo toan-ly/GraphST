@@ -1,2 +1,6 @@
 
 .codegpt
+data
+build
+dist
+GraphST.egg-info

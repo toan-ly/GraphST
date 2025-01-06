@@ -1,4 +1,4 @@
-name: long
+name: GraphST
 channels:
   - pytorch
   - conda-forge
