@@ -4,4 +4,5 @@ data
 build
 dist
 GraphST.egg-info
-results
+# anything has .csv
+*.csv

@@ -14,14 +14,15 @@ import warnings
 warnings.filterwarnings('ignore')
 
 
-def load_data(file_fold: str) -> sc.AnnData:
+def load_data(file_fold: str, is_breast_cancer: bool) -> sc.AnnData:
     """Load spatial data and metadata"""
     adata = sc.read_visium(file_fold, count_file='filtered_feature_bc_matrix.h5', load_images=True)
     adata.var_names_make_unique()
     
     metadata_file = Path(file_fold) / 'metadata.tsv'
     df_meta = pd.read_csv(metadata_file, sep='\t')
-    adata.obs['layer_guess'] = df_meta['layer_guess']
+    if not is_breast_cancer:
+        adata.obs['layer_guess'] = df_meta['layer_guess']
     
     return adata, df_meta
 
@@ -67,33 +68,45 @@ def visulize_results(adata: sc.AnnData, ARI: float, output_dir: str):
     # Spatial clustering visualization
     spatial_file = os.path.join(output_dir, "spatial_clustering.png")
     fig, axes = plt.subplots(1, 1, figsize=(8, 4))
-    sc.pl.spatial(adata, 
-              img_key="hires", 
-              color=["ground_truth", "domain"], 
-              title=["Ground truth", "ARI=%.4f"%ARI], 
-              show=True)
+    if ARI:
+        sc.pl.spatial(adata, 
+                img_key="hires", 
+                color=["ground_truth", "domain"], 
+                title=["Ground truth", "ARI=%.4f"%ARI],
+                show=True)
+    else:
+        sc.pl.spatial(adata, 
+                img_key="hires", 
+                color="domain", 
+                palette="tab20",
+                title="Clustering",
+                show=True)
     plt.tight_layout()
     plt.savefig(spatial_file)
     plt.close()
     
     # UMAP visualization
     sc.pp.neighbors(adata, use_rep='emb_pca', n_neighbors=10)
-    sc.tl.umap(adata)
-    
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3))
-    sc.pl.umap(adata, color='layer_guess', ax=axes[0], show=False)
-    sc.pl.umap(adata, color='domain', ax=axes[1], show=False)
+    sc.tl.umap(adata) 
+    if ARI:
+        fig, axes = plt.subplots(1, 2, figsize=(8, 3))
+        sc.pl.umap(adata, color='layer_guess', ax=axes[0], show=False)
+        sc.pl.umap(adata, color='domain', ax=axes[1], show=False)
 
-    axes[0].set_title('Manual Annotation')
-    axes[1].set_title('Clustering')
-    for ax in axes:
-        ax.set_aspect(1)
-    plt.tight_layout()
-    
+        axes[0].set_title('Manual Annotation')
+        axes[1].set_title('Clustering')
+        for ax in axes:
+            ax.set_aspect(1)
+        plt.tight_layout()
+    else:
+        fig, axes = plt.subplots(1, 1, figsize=(4, 3))
+        sc.pl.umap(adata, color='domain', ax=axes, show=False)
+        axes.set_title('Clustering')
+        plt.tight_layout()     
     umap_file = os.path.join(output_dir, "umap.png")
     plt.savefig(umap_file)
     plt.close()
-
+        
     # Save UMAP coordinates
     umap_coords = adata.obsm["X_umap"]
     spot_ids = adata.obs_names
@@ -108,9 +121,10 @@ def visulize_results(adata: sc.AnnData, ARI: float, output_dir: str):
 def process_dataset(dataset: str, n_clusters: int, radius: int, tool: str, base_dir: str, output_dir: str, device: torch.device):
     file_fold = os.path.join(base_dir, dataset)
     output_dir = os.path.join(output_dir, dataset)
+    is_breast_cancer = 'BRCA' in base_dir
     
     # Load data
-    adata, df_meta = load_data(file_fold)
+    adata, df_meta = load_data(file_fold, is_breast_cancer)
     
     # Train model
     adata = train_model(adata, device)
@@ -122,33 +136,36 @@ def process_dataset(dataset: str, n_clusters: int, radius: int, tool: str, base_
     save_results(adata, output_dir)
     
     # Evaluate clustering
-    ARI = evaluate_clustering(adata, df_meta)
-    print(f'Dataset {dataset} ARI: {ARI}')
-    
-    # Visualize results
-    visulize_results(adata, ARI, output_dir)
-    
+    if not is_breast_cancer:
+        ARI = evaluate_clustering(adata, df_meta)
+        print(f'Dataset {dataset} ARI: {ARI}')
+        visulize_results(adata, ARI, output_dir)
+    else:
+        visulize_results(adata, 0, output_dir)
     
 def main():
     # Device setup
-    device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
-    base_dir = '/home/lytq/GraphST/data/DLPFC'
-    datasets = os.listdir(base_dir)
-    datasets = [d for d in datasets if d.isdigit()]
-    print(len(datasets))
+    # base_dir = '/home/lytq/GraphST/data/DLPFC'
+    # datasets = os.listdir(base_dir)
+    # datasets = [d for d in datasets if d.isdigit()]
+    # # print(datasets)
+    # print(len(datasets))
     
-    # base_dir = '/home/lytq/GraphST/data/BRCA1'
-    # datasets = ['V1_Human_Breast_Cancer_Block_A_Section_1']
+    base_dir = '/home/lytq/GraphST/data/BRCA1'
+    datasets = ['V1_Human_Breast_Cancer_Block_A_Section_1']
     
-    n_clusters = 7
     radius = 50
     tool = 'mclust'
     data_name = base_dir.split('/')[-1]    
     output_dir = "/home/lytq/GraphST/results/" + data_name
 
     for dataset in datasets:
+        # n_clusters = 5 if dataset in ['151669', '151670', '151671', '151672'] else 7       
+        n_clusters = 20
         print(f'Processing dataset {dataset}...')
+        # print(f'Number of clusters: {n_clusters}')
         process_dataset(dataset, n_clusters, radius, tool, base_dir, output_dir, device)
         
 
