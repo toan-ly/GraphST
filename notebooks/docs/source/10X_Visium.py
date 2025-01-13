@@ -10,6 +10,10 @@ import matplotlib.pyplot as plt
 from GraphST import GraphST
 from GraphST.utils import clustering
 
+import warnings
+warnings.filterwarnings('ignore')
+
+
 def load_data(file_fold: str) -> sc.AnnData:
     """Load spatial data and metadata"""
     adata = sc.read_visium(file_fold, count_file='filtered_feature_bc_matrix.h5', load_images=True)
@@ -127,12 +131,15 @@ def process_dataset(dataset: str, n_clusters: int, radius: int, tool: str, base_
     
 def main():
     # Device setup
-    device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+    device = torch.device('cuda:7' if torch.cuda.is_available() else 'cpu')
 
-    # base_dir = '/home/lytq/GraphST/data/DLPFC'
-    # datasets = ['151673', '151674', '151675']
-    base_dir = '/home/lytq/GraphST/data/BRCA1'
-    datasets = ['V1_Human_Breast_Cancer_Block_A_Section_1']
+    base_dir = '/home/lytq/GraphST/data/DLPFC'
+    datasets = os.listdir(base_dir)
+    datasets = [d for d in datasets if d.isdigit()]
+    print(len(datasets))
+    
+    # base_dir = '/home/lytq/GraphST/data/BRCA1'
+    # datasets = ['V1_Human_Breast_Cancer_Block_A_Section_1']
     
     n_clusters = 7
     radius = 50
